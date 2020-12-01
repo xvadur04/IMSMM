@@ -6,7 +6,7 @@
 
 #IncludeRegexTransform: 
 
-D:/VS projects/IMS/IMSMM/main.cpp
+D:/IMS/main.cpp
 iostream
 -
 string
@@ -26,5 +26,9 @@ windows.h
 stdio.h
 -
 direct.h
+-
+string
+-
+iostream
 -
 

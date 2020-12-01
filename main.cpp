@@ -8,6 +8,10 @@
 #include <windows.h>
 #include <stdio.h>
 #include <direct.h>
+#include <string>
+#include <iostream>
+
+
 
 std::vector<std::pair<std::string, std::vector<int>>> read_csv(std::string filename){
     // Reads a CSV file into a vector of <string, vector<int>> pairs where
@@ -72,16 +76,15 @@ std::vector<std::pair<std::string, std::vector<int>>> read_csv(std::string filen
     return result;
 }
 
-
 int main() {
     WIN32_FIND_DATA NalezenaData;
-    HANDLE hFind = FindFirstFile( "./day/*", &NalezenaData);
+    HANDLE hFind = FindFirstFile(".\\..\\day\\*", &NalezenaData);
+
     if( (int)hFind == -1 ) return 0;
     do{
         printf("%s\n", NalezenaData.cFileName );
     }while( FindNextFile( hFind, &NalezenaData ) );
     FindClose( hFind );
-    return 0;
 
     std::vector<std::pair<std::string, std::vector<int>>> three_cols = read_csv("day/ADA-cmc.csv");
 

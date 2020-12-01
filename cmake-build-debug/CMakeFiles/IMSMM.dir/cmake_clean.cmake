@@ -2,8 +2,8 @@ file(REMOVE_RECURSE
   "CMakeFiles/IMSMM.dir/main.cpp.obj"
   "IMSMM.exe"
   "IMSMM.exe.manifest"
-  "IMSMM.lib"
   "IMSMM.pdb"
+  "libIMSMM.dll.a"
 )
 
 # Per-language clean rules from dependency scanning.
