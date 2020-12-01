@@ -1,0 +1,3 @@
+D:/VS projects/IMS/IMSMM/cmake-build-debug/CMakeFiles/IMSMM.dir
+D:/VS projects/IMS/IMSMM/cmake-build-debug/CMakeFiles/edit_cache.dir
+D:/VS projects/IMS/IMSMM/cmake-build-debug/CMakeFiles/rebuild_cache.dir

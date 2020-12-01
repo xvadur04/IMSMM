@@ -1,0 +1,30 @@
+#IncludeRegexLine: ^[ 	]*[#%][ 	]*(include|import)[ 	]*[<"]([^">]+)([">])
+
+#IncludeRegexScan: ^.*$
+
+#IncludeRegexComplain: ^$
+
+#IncludeRegexTransform: 
+
+D:/VS projects/IMS/IMSMM/main.cpp
+iostream
+-
+string
+-
+fstream
+-
+vector
+-
+utility
+-
+stdexcept
+-
+sstream
+-
+windows.h
+-
+stdio.h
+-
+direct.h
+-
+
