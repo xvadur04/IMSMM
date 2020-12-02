@@ -17,10 +17,11 @@
 #include <iostream>
 #include <map>
 #include <bits/stdc++.h>
+#include <getopt.h>
+#include <unistd.h>
 
 using std::cout; using std::cin;
 using std::endl; using std::vector;
-
 
 
 class data {
@@ -47,9 +48,18 @@ data::data(std::string date, double open, double high, double low, double close,
     MarketCapUSD = marketCapUSD;
 }
 
-std::vector<std::vector<std::pair<std::string, std::vector<int>>>> entryData;
+class Currency {      
+  public:            
+    std::string name; 
+    double balance;  
+};
 
+std::vector<std::vector<std::pair<std::string, std::vector<int>>>> entryData;
 std::map<std::string, std::vector<data>> LoadedData;
+std::vector<Currency> ActualData;
+std::vector<std::string> WantedCurrency; //všechny chtěné měny
+double Deposit; // Vložený vklad
+int Trend; //počítaný trend
 
 
 std::vector<std::pair<std::string, std::vector<int>>> read_csv(std::string filename){
@@ -67,24 +77,6 @@ std::vector<std::pair<std::string, std::vector<int>>> read_csv(std::string filen
 
     // Helper vars
     std::string line, colname;
-
-    // // Read the column names
-    // if(myFile.good())
-    // {
-    //     // Extract the first line in the file
-    //     std::getline(myFile, line);
-
-    //     // Create a stringstream from line
-    //     std::stringstream ss(line);
-
-    //     // Extract each column name
-    //     while(std::getline(ss, colname, ',')){
-
-    //         // Initialize and add <colname, int vector> pairs to result
-    //         result.push_back({colname, std::vector<int> {}});
-    //     }
-    // }
-
     std::getline(myFile, line); //First row
     // Read data, line by line
     std::string segment;
@@ -107,24 +99,6 @@ std::vector<std::pair<std::string, std::vector<int>>> read_csv(std::string filen
                     std::stod(splittedStrings[5]),std::stod(splittedStrings[6]));
 
         all.push_back(datas);
-        
-            
-
-        // // Keep track of the current column index
-        
-
-        // // Extract each integer
-        // while(ss >> val){
-
-        //     // Add the current integer to the 'colIdx' column's values vector
-        //     result.at(colIdx).second.push_back(val);
-
-        //     // If the next token is a comma, ignore it and move on
-        //     if(ss.peek() == ',') ss.ignore();
-
-        //     // Increment the column index
-        //     colIdx++;
-        // }
     }
     std::string name = filename.substr(6,3);
     LoadedData.insert(std::pair<std::string, std::vector<data>>(name,all));
@@ -157,31 +131,104 @@ void LoadData()
     }
 }
 
-//Třída pro měnu, název a množství měny
-class Currency {      
-  public:            
-    std::string name; 
-    double balance;  
-};
-
-vector<Currency> ActualData;
-
-// class day : public Process {   // ball model description
-//   double Prichod;                 // atribute of each customer
-//   void behavoir() {               // --- behavoir specification ---
-//     Prichod = Time;               // konkrétní den
-//     for()
-//     Seize(Box);                   // zůstatek pro den...
-//     Wait(10);                     // time of service
-//     Release(Box);                 // end of service
-//     Table(Time-Prichod);          // waiting and service time
-//   }
-// };
+bool is_double(const std::string& s)
+{
+    std::istringstream iss(s);
+    double d;
+    return iss >> d >> std::ws && iss.eof();
+}
 
 
+int ArgvParse(int argc, char *argv[])
+{
+    if ( argc <= 2)
+    {
+        std::cerr<<"Málo požadovaných argumentů" << '\n';
+        return 1;
+    }
+    for(int i = 1; i < argc ; i++)
+    {
+        std::string segment;
+        std::vector<std::string> seglist;
+        std::stringstream ss(argv[i]);
 
-int main() {
-    //LoadData();
+        while(std::getline(ss, segment, '='))
+        {
+            seglist.push_back(segment);
+        }
+        
+        if(seglist[0] == ("-C"))
+        {
+            segment;
+            std::vector<std::string> seglist1;
+            std::stringstream ss1(seglist[1]);
+
+            while(std::getline(ss1, segment, '='))
+            {
+                if(LoadedData.find(segment)!=LoadedData.end())
+                {
+                    WantedCurrency.push_back(segment);
+                }
+                else
+                {
+                    std::cerr<<"Špatně zadaná zkratka měny" << '\n';
+                    return 1;
+                }
+            }
+        }
+        else if (seglist[0] == ("-D"))
+        {
+            try
+            {
+                Deposit = std::stod(seglist[1]);
+                if(Deposit <= 100)
+                {
+                    std::cerr<<"Vklad musí být větší 100!" << '\n';
+                    return 1;
+                }
+            }
+            catch(std::exception& e)
+            {
+                std::cerr<<"Špatně zadaný vklad!" << '\n';
+                return 1;
+            }
+            
+        }
+        else if (seglist[0] == ("-T"))
+        {
+            try
+            {
+                Trend = std::stoi(seglist[1]);
+                if(Trend <= 0)
+                {
+                    std::cerr<<"Trend musí být větší jak 0!" << '\n';
+                    return 1;
+                }
+            }
+            catch(std::exception& e)
+            {
+                std::cerr<<"Špatně zadaný trend!" << '\n';
+                return 1;
+            } 
+        }
+        else
+        {
+            std::cerr<<"Neznámí agument!" << '\n';
+            return 1;
+        
+        }
+    }
+    return 0;
+}
+
+
+int main(int argc, char *argv[]){
+    LoadData();
+    if (ArgvParse(argc, argv) != 0)
+        return -1;
+
+
+    
     int pocetMen = 10;
     for (int i =0; i < pocetMen; i++ )
     { 
