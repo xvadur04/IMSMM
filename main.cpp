@@ -221,6 +221,26 @@ int ArgvParse(int argc, char *argv[])
     return 0;
 }
 
+//výpočet trendu metodou nejmenších čtverců
+double trend(std::vector<data> data)
+{
+    //int  test[4] = {4,1,2,0};
+    double xi = 0, yi = 0, xi2 = 0, xiyi = 0, a = 0, b = 0; 
+    int iter = 0;
+    for(int i = Trend-1; i >= 0 ; i--)
+    {
+        iter = iter + 1; //hodnota x v každém běhu
+        xi = xi + iter;
+        yi = yi + data[i].Close;
+        //yi = yi + test[j-i];
+        xi2 = xi2 + (iter * iter);
+        xiyi = xiyi + iter * data[i].Close;
+    }
+    b = (xi2*yi - xiyi * xi)/(xi2*Trend - xi*xi);
+    a = (xiyi*Trend - xi*yi)/(xi2*Trend - xi*xi);
+    return a * (Trend + 1) + b;
+}
+
 
 int main(int argc, char *argv[]){
     LoadData();
