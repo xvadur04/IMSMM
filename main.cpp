@@ -157,13 +157,42 @@ void LoadData()
     }
 }
 
+//Třída pro měnu, název a množství měny
+class Currency {      
+  public:            
+    std::string name; 
+    double balance;  
+};
+
+vector<Currency> ActualData;
+
+// class day : public Process {   // ball model description
+//   double Prichod;                 // atribute of each customer
+//   void behavoir() {               // --- behavoir specification ---
+//     Prichod = Time;               // konkrétní den
+//     for()
+//     Seize(Box);                   // zůstatek pro den...
+//     Wait(10);                     // time of service
+//     Release(Box);                 // end of service
+//     Table(Time-Prichod);          // waiting and service time
+//   }
+// };
+
+
 
 int main() {
-    LoadData();
-         
+    //LoadData();
+    int pocetMen = 10;
+    for (int i =0; i < pocetMen; i++ )
+    { 
+        Currency curr;
+        curr.name = "some name";
+        curr.balance = 9 + Random();
+        ActualData.insert(ActualData.begin() + i , curr);
+    }
 
     SetOutput("crypto.dat");
-    Init(0,1000000000);                      // initialize experiment
+    Init(0,365);                      // initialize experiment
     SetStep(1e-10,0.5);           // bisection needs small minstep
     Run();                        // run simulation, print results
     SIMLIB_statistics.Output();   // print run statistics
