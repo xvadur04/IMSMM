@@ -8,8 +8,12 @@
 #include <stdio.h>
 #include <string>
 #include <iostream>
+#include "simlib.h"
+#include <dirent.h>
 
-
+using std::cout; using std::cin;
+using std::endl; using std::vector;
+std::vector<std::vector<std::pair<std::string, std::vector<int>>>> entryData;
 
 std::vector<std::pair<std::string, std::vector<int>>> read_csv(std::string filename){
     // Reads a CSV file into a vector of <string, vector<int>> pairs where
@@ -74,46 +78,38 @@ std::vector<std::pair<std::string, std::vector<int>>> read_csv(std::string filen
     return result;
 }
 
-#include "simlib.h"
+void LoadData()
+{
+    DIR *dir; struct dirent *diread;
+    vector<std::string> files;
 
-const double g = 9.81;          // gravity acceleration
-
-class Ball : ConditionDown {    // ball model description
-    Integrator v,y;               // state variables
-    unsigned count;               // bounce event count
-    void Action()  {              // state event description
-        Print("# Odraz %u:\n", ++count);
-        Out();                    // print state
-        v = -0.8 * v.Value();     // the energy loss
-        y = 0;            // this is needed for detection when small energy!
-        if(count>=20)             // after 20 bounces:
-            Stop();                 //   end simulation run
+    if ((dir = opendir("./day")) != nullptr) {
+        while ((diread = readdir(dir)) != nullptr) {
+            files.push_back(diread->d_name);
+        }
+        closedir (dir);
+    } else {
+        perror ("opendir");
     }
-public:
-    Ball(double initialposition) :
-            ConditionDown(y),           // bounce condition: (y>=0) from TRUE to FALSE
-            v(-g),                      // y' = INTG( - m * g )
-            y(v, initialposition),      // y  = INTG( y' )
-            count(0) {}                 // init bounce count
-    void Out() {
-        Print("%-9.3f  % -9.3g  % -9.3g\n",
-              T.Value(), y.Value(), v.Value());
+
+    for(std::string file: files)
+    {
+        if(file != "." || file != "..")
+        {
+            entryData.push_back(read_csv("./day/" + file));
+        }
     }
-};
+}
 
-Ball m1(1.0);                   // model of system
 
-void Sample() { m1.Out(); }     // output the ball state periodically
-Sampler S(Sample,0.01);
+int main() {
+    LoadData();
+         
 
-int main() {                    // experiment description
-    SetOutput("ball.dat");
-    Print("# Ball --- model of bouncing ball\n");
-    Print("# Time y v \n");
-    Init(0);                      // initialize experiment
+    SetOutput("crypto.dat");
+    Init(0,1000000000);                      // initialize experiment
     SetStep(1e-10,0.5);           // bisection needs small minstep
-    SetAccuracy(1e-5,0.001);      // set numerical error tolerance
     Run();                        // run simulation, print results
     SIMLIB_statistics.Output();   // print run statistics
-    
+
 }
