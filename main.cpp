@@ -224,23 +224,21 @@ int ArgvParse(int argc, char *argv[])
 }
 
 //výpočet trendu metodou nejmenších čtverců
-double trend(std::vector<data> data)
+double trend(int count, std::vector<data> data)
 {
-    //int  test[4] = {4,1,2,0};
     double xi = 0, yi = 0, xi2 = 0, xiyi = 0, a = 0, b = 0; 
     int iter = 0;
-    for(int i = Trend-1; i >= 0 ; i--)
+    for(int i = count-1; i >= 0 ; i--)
     {
         iter = iter + 1; //hodnota x v každém běhu
         xi = xi + iter;
         yi = yi + data[i].Close;
-        //yi = yi + test[j-i];
         xi2 = xi2 + (iter * iter);
         xiyi = xiyi + iter * data[i].Close;
     }
-    b = (xi2*yi - xiyi * xi)/(xi2*Trend - xi*xi);
-    a = (xiyi*Trend - xi*yi)/(xi2*Trend - xi*xi);
-    return a * (Trend + 1) + b;
+    b = (xi2*yi - xiyi * xi)/(xi2*count - xi*xi);
+    a = (xiyi*count - xi*yi)/(xi2*count - xi*xi);
+    return a * (count + 1) + b;
 }
 
 class NewTrent : public Event {
@@ -257,6 +255,11 @@ class NewTrent : public Event {
         Activate(Time + 1);
     }
 };
+// //Variační koeficient
+// double varKoef(int count, std::vector<data> data)
+// {
+//     //Trend pro variační koeficient
+//     double avgTrend = trend(100, data);
 
 
 
@@ -289,6 +292,69 @@ class Hodl : public Process {
 };
 
 
+//     std::vector<double> container;
+//     //rozptyl
+//     for(int i = 0; i < count; i++)
+//     {
+//         double val = data[i].Close - avgTrend;
+//         val = val * val;
+//         container.push_back(val);
+//     }
+//     double result = 0;
+//     for(int j = 0; j < container.size(); j++)
+//     {
+//         result = result + container[j]; 
+//     }
+//     result = result/container.size();
+
+//     //odchylka
+//     double sx = sqrt(result);
+
+//     //var koef
+//     double vx = (sx / avgTrend);
+
+//     return vx;
+}
+
+//Vrací náhodný double mezi min-max
+double fRand(double fMin, double fMax)
+{
+    double f = (double)rand() / RAND_MAX;
+    return fMin + f * (fMax - fMin);
+}
+
+double predictOne(double RozsahMin, double RozsahMax, std::vector<data> data)
+{
+    for (int days = 0; days < 100; days++)
+    {
+        double trendToPrint = trend(7, data);
+        double a = RozsahMin;
+        double b = RozsahMax;
+        int N = 1000;
+        
+        std::vector<double> xrand;
+
+        for( int i = 0; i < N; i++)
+        {
+            double randNum = fRand(a, b);
+            xrand.push_back(randNum);
+        }
+
+        double resultRand = 0.0;
+        double narust = 0.0;
+
+        for( int j = 0; j < N; j++)
+        {
+            resultRand = resultRand + xrand[j];
+        }
+
+        return resultRand/double(N);
+    }
+}
+
+
+Histogram Predict("Predict",0,25,20);
+
 int main(int argc, char *argv[]){
     LoadData();
     if (ArgvParse(argc, argv) != 0)
@@ -301,18 +367,14 @@ int main(int argc, char *argv[]){
 
 
     
-    int pocetMen = 10;
-    for (int i =0; i < pocetMen; i++ )
-    { 
-        Currency curr;
-        curr.name = "some name";
-        curr.balance = 9 + Random();
-        ActualData.insert(ActualData.begin() + i , curr);
-    }
+    //double rozsah = varKoef(10, LoadedData["ATO"]);
+    
+    
+    
 
     SetOutput("crypto.dat");
     Init(0,365);                      // initialize experiment
-    SetStep(1e-10,0.5);           // bisection needs small minstep
+    SetStep(0,1);           // bisection needs small minstep
     Run();                        // run simulation, print results
     SIMLIB_statistics.Output();   // print run statistics
 
