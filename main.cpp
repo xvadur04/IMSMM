@@ -19,6 +19,7 @@
 #include <bits/stdc++.h>
 #include <getopt.h>
 #include <unistd.h>
+#include <math.h>
 
 using std::cout; using std::cin;
 using std::endl; using std::vector;
@@ -222,46 +223,146 @@ int ArgvParse(int argc, char *argv[])
 }
 
 //výpočet trendu metodou nejmenších čtverců
-double trend(std::vector<data> data)
+double trend(int count, std::vector<data> data)
 {
-    //int  test[4] = {4,1,2,0};
     double xi = 0, yi = 0, xi2 = 0, xiyi = 0, a = 0, b = 0; 
     int iter = 0;
-    for(int i = Trend-1; i >= 0 ; i--)
+    for(int i = count-1; i >= 0 ; i--)
     {
         iter = iter + 1; //hodnota x v každém běhu
         xi = xi + iter;
         yi = yi + data[i].Close;
-        //yi = yi + test[j-i];
         xi2 = xi2 + (iter * iter);
         xiyi = xiyi + iter * data[i].Close;
     }
-    b = (xi2*yi - xiyi * xi)/(xi2*Trend - xi*xi);
-    a = (xiyi*Trend - xi*yi)/(xi2*Trend - xi*xi);
-    return a * (Trend + 1) + b;
+    b = (xi2*yi - xiyi * xi)/(xi2*count - xi*xi);
+    a = (xiyi*count - xi*yi)/(xi2*count - xi*xi);
+    return a * (count + 1) + b;
 }
 
+//Variační koeficient
+double varKoef(int count, std::vector<data> data)
+{
+    //Trend pro variační koeficient
+    double avgTrend = trend(Trend, data);
+
+    std::vector<double> container;
+    //rozptyl
+    for(int i = 0; i < count; i++)
+    {
+        double val = data[i].Close - avgTrend;
+        val = val * val;
+        container.push_back(val);
+    }
+    double result = 0;
+    for(int j = 0; j < container.size(); j++)
+    {
+        result = result + container[j]; 
+    }
+    result = result/container.size();
+
+    //odchylka
+    double sx = sqrt(result);
+
+    //var koef
+    double vx = (sx / avgTrend);
+
+    return vx;
+}
+
+//Vrací náhodný double mezi min-max
+double fRand(double fMin, double fMax)
+{
+    double f = (double)rand() / RAND_MAX;
+    return fMin + f * (fMax - fMin);
+}
+
+Histogram Predict("Predict",0,25,20);
+
+class day : public Process { 
+  void Behavior() {               
+    //limity Monte carlo
+    double a = trend(Trend, LoadedData["ATO"]) * -(1 - varKoef(Trend, LoadedData["ATO"]));
+    double b = trend(Trend, LoadedData["ATO"]) * (1 - varKoef(Trend, LoadedData["ATO"]));
+    int N = 1000;
+    
+    std::vector<double> xrand;
+
+    for( int i = 0; i < N; i++)
+    {
+        double randNum = fRand(a, b);
+        xrand.push_back(randNum);
+    }
+
+    double resultRand = 0.0;
+
+    for( int j = 0; j < N; j++)
+    {
+        resultRand = resultRand + xrand[j];
+    }
+
+    double result = (b-a)/double(N)*resultRand;
+    cout << "vysledek:" << result << endl;
+    data toPush("", 0, 0, 0, result, 0, 0);
+    LoadedData["ATO"].insert(LoadedData["ATO"].begin(), toPush);
+    Predict(result);
+  }
+};
 
 int main(int argc, char *argv[]){
     LoadData();
     if (ArgvParse(argc, argv) != 0)
         return -1;
-
-
     
-    int pocetMen = 10;
-    for (int i =0; i < pocetMen; i++ )
-    { 
-        Currency curr;
-        curr.name = "some name";
-        curr.balance = 9 + Random();
-        ActualData.insert(ActualData.begin() + i , curr);
+    // int pocetMen = 10;
+    // for (int i =0; i < pocetMen; i++ )
+    // { 
+    //     Currency curr;
+    //     curr.name = "some name";
+    //     curr.balance = 9 + Random();
+    //     ActualData.insert(ActualData.begin() + i , curr);
+    // }
+    
+    for (int days = 0; days < 365; days++)
+    {
+        cout << "DAY " << days << endl;
+        double trendToPrint = trend(500, LoadedData["ATO"]);
+        cout << "   Trend:" << trendToPrint << endl;
+        double a = trendToPrint * (1 - varKoef(Trend, LoadedData["ATO"]));
+        double b = trendToPrint * (1 + varKoef(Trend, LoadedData["ATO"]));
+        //cout << "min, max:" << a << ", " << b << endl;
+        int N = 100;
+        
+        std::vector<double> xrand;
+
+        for( int i = 0; i < N; i++)
+        {
+            double randNum = fRand(a, b);
+            xrand.push_back(randNum);
+        }
+
+        double resultRand = 0.0;
+
+        for( int j = 0; j < N; j++)
+        {
+            resultRand = resultRand + xrand[j];
+        }
+        //cout << "resultRand:" << resultRand << endl;
+        //cout << "N:" << double(N) << endl;
+        cout << "   MAX - MIN: " << (b-a) << endl;
+        cout << "denní nárust" << 1+((b-a)/4) << endl;
+        double result = resultRand/double(N)*(1+((b-a)/4));
+        cout << "   vysledek:" << result << endl;
+        data toPush("", 0, 0, 0, result, 0, 0);
+        LoadedData["ATO"].insert(LoadedData["ATO"].begin(), toPush);
     }
+    
 
     SetOutput("crypto.dat");
     Init(0,365);                      // initialize experiment
-    SetStep(1e-10,0.5);           // bisection needs small minstep
+    SetStep(0,1);           // bisection needs small minstep
     Run();                        // run simulation, print results
     SIMLIB_statistics.Output();   // print run statistics
+    Predict.Output();
 
 }
