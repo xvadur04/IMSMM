@@ -240,34 +240,34 @@ double trend(int count, std::vector<data> data)
     return a * (count + 1) + b;
 }
 
-//Variační koeficient
-double varKoef(int count, std::vector<data> data)
-{
-    //Trend pro variační koeficient
-    double avgTrend = trend(Trend, data);
+// //Variační koeficient
+// double varKoef(int count, std::vector<data> data)
+// {
+//     //Trend pro variační koeficient
+//     double avgTrend = trend(100, data);
 
-    std::vector<double> container;
-    //rozptyl
-    for(int i = 0; i < count; i++)
-    {
-        double val = data[i].Close - avgTrend;
-        val = val * val;
-        container.push_back(val);
-    }
-    double result = 0;
-    for(int j = 0; j < container.size(); j++)
-    {
-        result = result + container[j]; 
-    }
-    result = result/container.size();
+//     std::vector<double> container;
+//     //rozptyl
+//     for(int i = 0; i < count; i++)
+//     {
+//         double val = data[i].Close - avgTrend;
+//         val = val * val;
+//         container.push_back(val);
+//     }
+//     double result = 0;
+//     for(int j = 0; j < container.size(); j++)
+//     {
+//         result = result + container[j]; 
+//     }
+//     result = result/container.size();
 
-    //odchylka
-    double sx = sqrt(result);
+//     //odchylka
+//     double sx = sqrt(result);
 
-    //var koef
-    double vx = (sx / avgTrend);
+//     //var koef
+//     double vx = (sx / avgTrend);
 
-    return vx;
+//     return vx;
 }
 
 //Vrací náhodný double mezi min-max
@@ -277,61 +277,14 @@ double fRand(double fMin, double fMax)
     return fMin + f * (fMax - fMin);
 }
 
-Histogram Predict("Predict",0,25,20);
-
-class day : public Process { 
-  void Behavior() {               
-    //limity Monte carlo
-    double a = trend(Trend, LoadedData["ATO"]) * -(1 - varKoef(Trend, LoadedData["ATO"]));
-    double b = trend(Trend, LoadedData["ATO"]) * (1 - varKoef(Trend, LoadedData["ATO"]));
-    int N = 1000;
-    
-    std::vector<double> xrand;
-
-    for( int i = 0; i < N; i++)
+double predictOne(double RozsahMin, double RozsahMax, std::vector<data> data)
+{
+    for (int days = 0; days < 100; days++)
     {
-        double randNum = fRand(a, b);
-        xrand.push_back(randNum);
-    }
-
-    double resultRand = 0.0;
-
-    for( int j = 0; j < N; j++)
-    {
-        resultRand = resultRand + xrand[j];
-    }
-
-    double result = (b-a)/double(N)*resultRand;
-    cout << "vysledek:" << result << endl;
-    data toPush("", 0, 0, 0, result, 0, 0);
-    LoadedData["ATO"].insert(LoadedData["ATO"].begin(), toPush);
-    Predict(result);
-  }
-};
-
-int main(int argc, char *argv[]){
-    LoadData();
-    if (ArgvParse(argc, argv) != 0)
-        return -1;
-    
-    // int pocetMen = 10;
-    // for (int i =0; i < pocetMen; i++ )
-    // { 
-    //     Currency curr;
-    //     curr.name = "some name";
-    //     curr.balance = 9 + Random();
-    //     ActualData.insert(ActualData.begin() + i , curr);
-    // }
-    
-    for (int days = 0; days < 365; days++)
-    {
-        cout << "DAY " << days << endl;
-        double trendToPrint = trend(500, LoadedData["ATO"]);
-        cout << "   Trend:" << trendToPrint << endl;
-        double a = trendToPrint * (1 - varKoef(Trend, LoadedData["ATO"]));
-        double b = trendToPrint * (1 + varKoef(Trend, LoadedData["ATO"]));
-        //cout << "min, max:" << a << ", " << b << endl;
-        int N = 100;
+        double trendToPrint = trend(7, data);
+        double a = RozsahMin;
+        double b = RozsahMax;
+        int N = 1000;
         
         std::vector<double> xrand;
 
@@ -342,20 +295,28 @@ int main(int argc, char *argv[]){
         }
 
         double resultRand = 0.0;
+        double narust = 0.0;
 
         for( int j = 0; j < N; j++)
         {
             resultRand = resultRand + xrand[j];
         }
-        //cout << "resultRand:" << resultRand << endl;
-        //cout << "N:" << double(N) << endl;
-        cout << "   MAX - MIN: " << (b-a) << endl;
-        cout << "denní nárust" << 1+((b-a)/4) << endl;
-        double result = resultRand/double(N)*(1+((b-a)/4));
-        cout << "   vysledek:" << result << endl;
-        data toPush("", 0, 0, 0, result, 0, 0);
-        LoadedData["ATO"].insert(LoadedData["ATO"].begin(), toPush);
+
+        return resultRand/double(N);
     }
+}
+
+
+Histogram Predict("Predict",0,25,20);
+
+int main(int argc, char *argv[]){
+    LoadData();
+    if (ArgvParse(argc, argv) != 0)
+        return -1;
+    
+    //double rozsah = varKoef(10, LoadedData["ATO"]);
+    
+    
     
 
     SetOutput("crypto.dat");
@@ -363,6 +324,5 @@ int main(int argc, char *argv[]){
     SetStep(0,1);           // bisection needs small minstep
     Run();                        // run simulation, print results
     SIMLIB_statistics.Output();   // print run statistics
-    Predict.Output();
 
 }
