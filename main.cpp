@@ -24,6 +24,14 @@
 using std::cout; using std::cin;
 using std::endl; using std::vector;
 
+class savedForCoin {
+    public:
+    double firstCash; //kolik jsi dal na začítek
+    double cash; //aktuální vložená částka
+    double coin; //kolik je to v coině
+    double day; //kolikátý je den
+    
+};
 
 class data {
     public:
@@ -61,7 +69,10 @@ std::vector<Currency> ActualData;
 std::vector<std::string> WantedCurrency; //všechny chtěné měny
 double Deposit; // Vložený vklad
 int Trend; //počítaný trend
-std::map<std::string, std::vector<data>> NewData;
+std::map<std::string, std::vector <savedForCoin>> NewData;
+double dayCountR;
+double dayCountH;
+double dayCount;
 
 
 std::vector<std::pair<std::string, std::vector<int>>> read_csv(std::string filename){
@@ -167,14 +178,21 @@ int ArgvParse(int argc, char *argv[])
 
             while(std::getline(ss1, segment, '='))
             {
-                if(LoadedData.find(segment)!=LoadedData.end())
+                std::stringstream ss2(segment);
+                std::string coin;
+                while (std::getline(ss2, coin, ','))
                 {
-                    NewData.insert(std::pair<std::string, std::vector<data>>(seglist,all))
-                }
-                else
-                {
-                    std::cerr<<"Špatně zadaná zkratka měny" << '\n';
-                    return 1;
+                    if(LoadedData.find(coin)!= LoadedData.end())
+                    {
+                        std::vector<savedForCoin> nw;
+                        WantedCurrency.push_back(coin);
+                        NewData.insert(std::pair<std::string, std::vector<savedForCoin>>(coin,nw));
+                    }
+                    else
+                    {
+                        std::cerr<<"Špatně zadaná zkratka měny" << '\n';
+                        return 1;
+                    }
                 }
             }
         }
@@ -213,6 +231,25 @@ int ArgvParse(int argc, char *argv[])
                 return 1;
             } 
         }
+        else if (seglist[0] == ("-L"))
+        {
+            try
+             {
+                dayCountR = std::stoi(seglist[1]);
+                dayCountH = std::stoi(seglist[1]);
+                dayCount = std::stoi(seglist[1]);
+                if(Trend <= 0)
+                {
+                    std::cerr<<"Délka dní musí být musí být větší jak 0!" << '\n';
+                    return 1;
+                }
+            }
+            catch(std::exception& e)
+            {
+                std::cerr<<"Špatně zadaný trend!" << '\n';
+                return 1;
+            } 
+        }
         else
         {
             std::cerr<<"Neznámí agument!" << '\n';
@@ -241,56 +278,13 @@ double trend(int count, std::vector<data> data)
     return a * (count + 1) + b;
 }
 
-class NewTrent : public Event {
-    void Behavior() {
-        double rand = Random();
-        if( rand > 0.5 )
-        { 
-            //+
-        }
-        else
-        {
-            // - 
-        }
-        Activate(Time + 1);
-    }
-};
+
+
 // //Variační koeficient
 // double varKoef(int count, std::vector<data> data)
 // {
 //     //Trend pro variační koeficient
 //     double avgTrend = trend(100, data);
-
-
-
-class Rebalanc : public Process {
-    bool isInit = true;
-    void Behavior() {
-       if(isInit)
-       {
-           //buy
-           isInit = false;
-       }
-       //Calculate
-       //if rebalace
-
-    }
-};
-
-class Hodl : public Process {
-    bool isInit = true;
-    void Behavior() {
-        if(isInit)
-        {
-            //buy
-            isInit = false;
-        }
-        //Buy(();
-        Wait(364);
-        //Sold();
-    }
-};
-
 
 //     std::vector<double> container;
 //     //rozptyl
@@ -314,7 +308,7 @@ class Hodl : public Process {
 //     double vx = (sx / avgTrend);
 
 //     return vx;
-}
+//}
 
 //Vrací náhodný double mezi min-max
 double fRand(double fMin, double fMax)
@@ -350,32 +344,167 @@ double predictOne(double RozsahMin, double RozsahMax, std::vector<data> data)
 
         return resultRand/double(N);
     }
+    return 0;
 }
 
 
 Histogram Predict("Predict",0,25,20);
+
+class NewTrent : public Event {
+    void Behavior() {
+        for(int i = 0 ; i < 4; i++)
+        {
+            double rand = Random();
+            if( rand > 0.5 )
+            { 
+                double x = LoadedData[WantedCurrency[i]][LoadedData.size()].Close;
+
+            }
+            else
+            {
+                // - 
+            }
+        }
+        
+        Activate(Time + 1);
+    }
+};
+
+bool isInitR = true;
+double actualValueR;
+
+class Rebalanc : public Process {
+  
+public:
+
+    void Behavior() {
+        
+        if(isInitR)
+        {
+            isInitR = false;
+            int splt = WantedCurrency.size();
+            double onEachCrypto = Deposit / splt;
+
+            for( int i = 0; i < WantedCurrency.size(); i++)
+            {
+                actualValueR = LoadedData[WantedCurrency[i]][dayCountR].Close;
+                savedForCoin nw;
+                nw.firstCash = onEachCrypto;
+                nw.cash = onEachCrypto;
+                nw.coin = onEachCrypto/actualValueR;
+                NewData[WantedCurrency[i]].push_back(nw);
+            }
+        }
+
+        //Calculate
+        for( int j = 0; j< WantedCurrency.size(); j++)
+        {
+            actualValueR = LoadedData[WantedCurrency[j]][dayCountR].Close;
+            double aa = NewData[WantedCurrency[j]][0].cash / NewData[WantedCurrency[j]][0].coin;
+            //                9                      100                             10
+            double prct = (actualValueR / aa - 1) *100;
+            if(prct > 3.0 || prct < -3.0 )
+            {
+                double allCash = 0;
+                for( int i = 0; i < WantedCurrency.size(); i++)
+                {
+                     allCash += NewData[WantedCurrency[i]][0].coin * LoadedData[WantedCurrency[i]][dayCountR].Close;
+                }
+                allCash = allCash / WantedCurrency.size();
+                for( int i = 0; i < WantedCurrency.size(); i++)
+                {
+                     NewData[WantedCurrency[i]][0].cash = allCash;
+                     NewData[WantedCurrency[i]][0].coin = allCash/LoadedData[WantedCurrency[i]][dayCountR].Close;
+                }
+                break;
+            }
+            //cout<< WantedCurrency[i]<< "=" << onEachCrypto/LoadedData[WantedCurrency[i]][dayConut].Close << endl;
+        }
+        dayCountR--;
+
+        if (dayCountR == 0)
+        {
+            for( int i = 0; i < WantedCurrency.size(); i++)
+            {
+                double nw = NewData[WantedCurrency[i]][0].coin * LoadedData[WantedCurrency[i]][dayCountR].Close;
+                cout << "Rebalanc= " << WantedCurrency[i] << "=" << nw << " \t% = " << (nw / NewData[WantedCurrency[i]][0].firstCash - 1) * 100 << "%" <<endl;  
+            }
+        }
+        
+
+       
+
+       //if rebalace
+
+    }
+};
+
+
+
+bool isInitH = true;
+//todo dny
+class Hodl : public Process {
+    
+public: 
+    void Behavior() {
+        if(isInitH)
+        {
+            isInitH = false;
+            int splt = WantedCurrency.size();
+            double onEachCrypto = Deposit / splt;
+
+            for( int i = 0; i < WantedCurrency.size(); i++)
+            {
+                double actualValue = LoadedData[WantedCurrency[i]][dayCountH].Close;
+                savedForCoin nw;
+                nw.firstCash = onEachCrypto;
+                nw.cash = onEachCrypto;
+                nw.coin = onEachCrypto/actualValue;
+                NewData[WantedCurrency[i]].push_back(nw);
+                
+                //cout<< WantedCurrency[i]<< "=" << onEachCrypto/LoadedData[WantedCurrency[i]][dayConut].Close << endl;
+            }
+        }
+
+        dayCountH -= 1;
+        //cout << dayCountH << endl;
+
+        if(dayCountH == 0)
+        {
+            for( int i = 0; i < WantedCurrency.size(); i++)
+            {
+                //cout<< "Crypto: " <<onEachCrypto << endl;
+                double nw = NewData[WantedCurrency[i]][1].coin * LoadedData[WantedCurrency[i]][dayCountH].Close;
+                cout << "HODL= " << WantedCurrency[i] << "=" << nw << "\t % = " << (nw / NewData[WantedCurrency[i]][1].firstCash - 1) * 100 << "%" <<endl;
+            }
+        }
+        
+
+    }
+};
+
+class Prichody : public Event {
+    void Behavior() {
+        (new Rebalanc)->Activate();
+        (new Hodl)->Activate();
+        Activate( Time + 1);
+    }
+};
 
 int main(int argc, char *argv[]){
     LoadData();
     if (ArgvParse(argc, argv) != 0)
         return -1;
 
-    Init(0, 365);
-
-
-
-
-
-    
-    //double rozsah = varKoef(10, LoadedData["ATO"]);
-    
-    
-    
-
     SetOutput("crypto.dat");
-    Init(0,365);                      // initialize experiment
-    SetStep(0,1);           // bisection needs small minstep
-    Run();                        // run simulation, print results
+    Init(0, dayCount);
+
+     (new Prichody)->Activate();
+
+    Run();
+
+    //double rozsah = varKoef(10, LoadedData["ATO"]);
+
     SIMLIB_statistics.Output();   // print run statistics
 
 }
