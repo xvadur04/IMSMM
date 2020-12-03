@@ -19,7 +19,7 @@
 #include <bits/stdc++.h>
 #include <getopt.h>
 #include <unistd.h>
-#include <math.h> 
+#include <math.h>
 
 using std::cout; using std::cin;
 using std::endl; using std::vector;
@@ -61,6 +61,7 @@ std::vector<Currency> ActualData;
 std::vector<std::string> WantedCurrency; //všechny chtěné měny
 double Deposit; // Vložený vklad
 int Trend; //počítaný trend
+std::map<std::string, std::vector<data>> NewData;
 
 
 std::vector<std::pair<std::string, std::vector<int>>> read_csv(std::string filename){
@@ -168,7 +169,7 @@ int ArgvParse(int argc, char *argv[])
             {
                 if(LoadedData.find(segment)!=LoadedData.end())
                 {
-                    WantedCurrency.push_back(segment);
+                    NewData.insert(std::pair<std::string, std::vector<data>>(seglist,all))
                 }
                 else
                 {
@@ -242,104 +243,50 @@ double trend(std::vector<data> data)
     return a * (Trend + 1) + b;
 }
 
-double prediktMedian(std::vector<data> data)
-{
-    double sum;
-    for(int i = 0; i<30; i++)
-    {
-        sum += data[i].Close;
-    }
-
-    printf("%8.6f  %8.6f\n", sum/30,sum);
-    printf("%8.6f  %8.6f\n", sum/31,sum);
-    printf("%8.6f  %8.6f\n", sum/32,sum);
-    
-    return sum/30;
-}
-
-double monteCarlo()
-{
-    double prediction = trend(LoadedData["ATO"]); //5.7, 5,3
-    double longTrend = prediktMedian(LoadedData["ATO"]);
-
-    double rozdilPrediktLast = prediction - 5.3;
-    double rozdilPredikLngTrnd = prediction - longTrend;
-
-
-    double max = prediction * 1.05;
-    double min = prediction * 0.95;
-    
-    double cntUp = 0;
-    double cntDown = 0;
-    int a = 500;
-
-    double forCount = 10000;
-    for( int i = 0; i <= forCount; i++)
-    {
-        double nrm = Normal(1,0.4);
-        double rand = prediction + prediction * nrm;
-        
-        if(max > rand && min < rand)
-        {
-            cntUp += 1;
-            cntDown += rand;
-        
+class NewTrent : public Event {
+    void Behavior() {
+        double rand = Random();
+        if( rand > 0.5 )
+        { 
+            //+
         }
-        if( i == a )
+        else
         {
-            //printf( "MC = %8.6f  %d\n", rand,a);
-            //printf("%f \n", nrm);
-            a += 500;
+            // - 
         }
+        Activate(Time + 1);
+    }
+};
+
+
+
+class Rebalanc : public Process {
+    bool isInit = true;
+    void Behavior() {
+       if(isInit)
+       {
+           //buy
+           isInit = false;
+       }
+       //Calculate
+       //if rebalace
 
     }
-    //printf( "Up = %8.6f\n", cntDown/cntUp);
-    
-    return(cntDown/cntUp);
+};
 
-}
-
-void test()
-{ 
-    int sizeLen = LoadedData["ATO"].size();
-    std::vector<double> Open;
-    std::vector<double> Change;
-    std::vector<int> RandomA;
-    std::vector<double> RandomChange;
-    std::vector<double> Price;
-    int a = sizeLen;
-    int b = sizeLen;
-    int c = sizeLen;
-    int e = sizeLen;
-    int f = sizeLen;
-    for( int i = 0; i < 50; i++)
-    {
-        printf("%d \n",i);
-        Open.push_back(LoadedData["ATO"][i].Close);
+class Hodl : public Process {
+    bool isInit = true;
+    void Behavior() {
+        if(isInit)
+        {
+            //buy
+            isInit = false;
+        }
+        //Buy(();
+        Wait(364);
+        //Sold();
     }
-    for( int i = 1; i < 20 ; i++)
-    {
-        printf("%d \n",i);
-        Change.push_back(log(Open[i]/Open[i-1]));
-        RandomA.push_back(rand() % 10);
-    }
-    for( int i = 0; i < 10; i++)
-    {
-        printf("%d \n",i);
-        printf("%f \n", Change[RandomA[i]]);
-        RandomChange.push_back(Change[RandomA[i]]);
-    }
-    Price.push_back(LoadedData["ATO"][0].Close);
-    for( int i = 1; i < 10; i++)
-    {
-        printf("%d \n",i);
-        Price.push_back(Price[i-1]*exp(RandomChange[i]));
-        printf("%8.6f \n", Price[i] );
-    }
-    
-    printf("test");
-
-}
+};
 
 
 int main(int argc, char *argv[]){
@@ -347,21 +294,10 @@ int main(int argc, char *argv[]){
     if (ArgvParse(argc, argv) != 0)
         return -1;
 
-    test();
-    return 1;
+    Init(0, 365);
 
-    double a = 0;
-    for(int i = 0; i<=100 ; i++)
-    {
-        a += monteCarlo();
-    }
 
-    printf("%8.6f \n", a/100);
-    printf("5,7\n");
-    
 
-    //printf("value = %8.6f\n", );
-    return 1;
 
 
     
