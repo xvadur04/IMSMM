@@ -46,7 +46,7 @@ class data {
 
 };
 
-data::data(std::string date, double open, double high, double low, double close, double volumeUSD, double marketCapUSD)
+data::data(std::string date = "", double open = 0, double high = 0, double low= 0, double close = 0, double volumeUSD = 0, double marketCapUSD = 0)
 {
     Date = date;
     Open = open;
@@ -70,8 +70,13 @@ std::vector<std::string> WantedCurrency; //všechny chtěné měny
 double Deposit; // Vložený vklad
 int Trend; //počítaný trend
 std::map<std::string, std::vector <savedForCoin>> NewData;
-double dayCountR;
-double dayCountH;
+std::map<std::string, std::vector<data>> PredictedData;
+double dayCountR1H;
+double dayCountH1H;
+double dayCountR1D;
+double dayCountH1D;
+double dayCountR1M;
+double dayCountH1M;
 double dayCount;
 
 
@@ -151,6 +156,16 @@ bool is_double(const std::string& s)
     return iss >> d >> std::ws && iss.eof();
 }
 
+void CreateNewVectorForPrediction()
+{
+    for( int j = 0; j < WantedCurrency.size(); j++)
+    {
+        for( int i = 6; i  >= 0; i--)
+        {
+            PredictedData[WantedCurrency[j]].push_back(LoadedData[WantedCurrency[j]][6-i]);
+        }
+    }
+}
 
 int ArgvParse(int argc, char *argv[])
 {
@@ -187,6 +202,8 @@ int ArgvParse(int argc, char *argv[])
                         std::vector<savedForCoin> nw;
                         WantedCurrency.push_back(coin);
                         NewData.insert(std::pair<std::string, std::vector<savedForCoin>>(coin,nw));
+                        std::vector<data> nd;
+                        PredictedData.insert(std::pair<std::string, std::vector<data>>(coin,nd));
                     }
                     else
                     {
@@ -214,31 +231,14 @@ int ArgvParse(int argc, char *argv[])
             }
             
         }
-        else if (seglist[0] == ("-T"))
-        {
-            try
-            {
-                Trend = std::stoi(seglist[1]);
-                if(Trend <= 0)
-                {
-                    std::cerr<<"Trend musí být větší jak 0!" << '\n';
-                    return 1;
-                }
-            }
-            catch(std::exception& e)
-            {
-                std::cerr<<"Špatně zadaný trend!" << '\n';
-                return 1;
-            } 
-        }
         else if (seglist[0] == ("-L"))
         {
             try
              {
-                dayCountR = std::stoi(seglist[1]);
-                dayCountH = std::stoi(seglist[1]);
-                dayCount = std::stoi(seglist[1]);
-                if(Trend <= 0)
+                dayCountR1H = std::stoi(seglist[1]);
+                dayCountH1H = std::stoi(seglist[1]);
+                dayCount = std::stoi(seglist[1]) * 24;
+                if(dayCount <= 0)
                 {
                     std::cerr<<"Délka dní musí být musí být větší jak 0!" << '\n';
                     return 1;
@@ -257,6 +257,7 @@ int ArgvParse(int argc, char *argv[])
         
         }
     }
+    CreateNewVectorForPrediction();
     return 0;
 }
 
@@ -319,36 +320,33 @@ double fRand(double fMin, double fMax)
 
 double predictOne(double RozsahMin, double RozsahMax, std::vector<data> data)
 {
-    for (int days = 0; days < 100; days++)
+    
+    double trendToPrint = trend(7, data);
+    double a = RozsahMin;
+    double b = RozsahMax;
+    int N = 1000;
+    
+    std::vector<double> xrand;
+
+    for( int i = 0; i < N; i++)
     {
-        double trendToPrint = trend(7, data);
-        double a = RozsahMin;
-        double b = RozsahMax;
-        int N = 1000;
-        
-        std::vector<double> xrand;
-
-        for( int i = 0; i < N; i++)
-        {
-            double randNum = fRand(a, b);
-            xrand.push_back(randNum);
-        }
-
-        double resultRand = 0.0;
-        double narust = 0.0;
-
-        for( int j = 0; j < N; j++)
-        {
-            resultRand = resultRand + xrand[j];
-        }
-
-        return resultRand/double(N);
+        double randNum = fRand(a, b);
+        xrand.push_back(randNum);
     }
-    return 0;
+
+    double resultRand = 0.0;
+    double narust = 0.0;
+
+    for( int j = 0; j < N; j++)
+    {
+        resultRand = resultRand + xrand[j];
+    }
+
+    return resultRand/double(N);
+    
 }
 
 
-Histogram Predict("Predict",0,25,20);
 
 class NewTrent : public Event {
     void Behavior() {
@@ -370,6 +368,98 @@ class NewTrent : public Event {
     }
 };
 
+class NewCurs : public Process {
+    void Behavior() {
+        for(int i = 0 ; i < WantedCurrency.size(); i++)
+        {
+            data predict;
+            double rand = Random();
+            double desRand = Random() / 10;
+            double lastValueOfCoin = PredictedData[WantedCurrency[i]][PredictedData.size()-1].Close;
+            double dispersion = lastValueOfCoin * desRand; // max odhylka 10% z přechoží hodnoty
+            double maxP = lastValueOfCoin * (1 + dispersion); 
+            double minP = lastValueOfCoin * (1 - dispersion);
+            if( rand > 0.5 )
+            { 
+                 predict.Close = predictOne(lastValueOfCoin, maxP, PredictedData[WantedCurrency[i]]);
+            }
+            else
+            {
+                predict.Close = predictOne(minP,lastValueOfCoin, PredictedData[WantedCurrency[i]]);
+            }
+            PredictedData[WantedCurrency[i]].push_back(predict);
+            //cout << WantedCurrency[i] << " = " << predict.Close << endl;
+        }
+    }
+};
+
+bool isInitRP = true;
+double actualValueRP;
+class RebalancPredikt : public Process {
+  
+public:
+
+    void Behavior() {
+        
+        if(isInitRP)
+        {
+            isInitRP = false;
+            int splt = WantedCurrency.size();
+            double onEachCrypto = Deposit / splt;
+
+            for( int i = 0; i < WantedCurrency.size(); i++)
+            {
+                actualValueRP = LoadedData[WantedCurrency[i]][dayCountR1H].Close;
+                savedForCoin nw;
+                nw.firstCash = onEachCrypto;
+                nw.cash = onEachCrypto;
+                nw.coin = onEachCrypto/actualValueRP;
+                NewData[WantedCurrency[i]].push_back(nw);
+            }
+        }
+
+      
+        //Calculate
+        for( int j = 0; j< WantedCurrency.size(); j++)
+        {
+            actualValueRP = LoadedData[WantedCurrency[j]][dayCountR1H].Close;
+            double aa = NewData[WantedCurrency[j]][0].cash / NewData[WantedCurrency[j]][0].coin;
+            //                9                      100                             10
+            double prct = (actualValueRP / aa - 1) *100;
+            if(prct > 7.0 || prct < -7.0 )
+            {
+                double allCash = 0;
+                for( int i = 0; i < WantedCurrency.size(); i++)
+                {
+                    allCash += NewData[WantedCurrency[i]][0].coin * LoadedData[WantedCurrency[i]][dayCountR1H].Close;
+                }
+                allCash = allCash / WantedCurrency.size();
+                for( int i = 0; i < WantedCurrency.size(); i++)
+                {
+                    NewData[WantedCurrency[i]][0].cash = allCash;
+                    NewData[WantedCurrency[i]][0].coin = allCash/LoadedData[WantedCurrency[i]][dayCountR1H].Close;
+                }
+                break;
+            }
+            //cout<< WantedCurrency[i]<< "=" << onEachCrypto/LoadedData[WantedCurrency[i]][dayConut].Close << endl;
+        }
+        
+        
+        dayCountR1H--;
+
+        if (dayCountR1H == 0)
+        {
+            for( int i = 0; i < WantedCurrency.size(); i++)
+            {
+                double nw = NewData[WantedCurrency[i]][0].coin * LoadedData[WantedCurrency[i]][dayCountR1H].Close;
+                cout << "Rebalanc= " << WantedCurrency[i] << "=" << nw << " \t% = " << (nw / NewData[WantedCurrency[i]][0].firstCash - 1) * 100 << "%" <<endl;  
+            }
+        }
+       //if rebalace
+
+    }
+};
+
 bool isInitR = true;
 double actualValueR;
 
@@ -387,7 +477,7 @@ public:
 
             for( int i = 0; i < WantedCurrency.size(); i++)
             {
-                actualValueR = LoadedData[WantedCurrency[i]][dayCountR].Close;
+                actualValueR = LoadedData[WantedCurrency[i]][dayCountR1H].Close;
                 savedForCoin nw;
                 nw.firstCash = onEachCrypto;
                 nw.cash = onEachCrypto;
@@ -396,44 +486,43 @@ public:
             }
         }
 
+      
         //Calculate
         for( int j = 0; j< WantedCurrency.size(); j++)
         {
-            actualValueR = LoadedData[WantedCurrency[j]][dayCountR].Close;
+            actualValueR = LoadedData[WantedCurrency[j]][dayCountR1H].Close;
             double aa = NewData[WantedCurrency[j]][0].cash / NewData[WantedCurrency[j]][0].coin;
             //                9                      100                             10
             double prct = (actualValueR / aa - 1) *100;
-            if(prct > 3.0 || prct < -3.0 )
+            if(prct > 7.0 || prct < -7.0 )
             {
                 double allCash = 0;
                 for( int i = 0; i < WantedCurrency.size(); i++)
                 {
-                     allCash += NewData[WantedCurrency[i]][0].coin * LoadedData[WantedCurrency[i]][dayCountR].Close;
+                    allCash += NewData[WantedCurrency[i]][0].coin * LoadedData[WantedCurrency[i]][dayCountR1H].Close;
                 }
                 allCash = allCash / WantedCurrency.size();
                 for( int i = 0; i < WantedCurrency.size(); i++)
                 {
-                     NewData[WantedCurrency[i]][0].cash = allCash;
-                     NewData[WantedCurrency[i]][0].coin = allCash/LoadedData[WantedCurrency[i]][dayCountR].Close;
+                    NewData[WantedCurrency[i]][0].cash = allCash;
+                    NewData[WantedCurrency[i]][0].coin = allCash/LoadedData[WantedCurrency[i]][dayCountR1H].Close;
                 }
                 break;
             }
             //cout<< WantedCurrency[i]<< "=" << onEachCrypto/LoadedData[WantedCurrency[i]][dayConut].Close << endl;
         }
-        dayCountR--;
+        
+        
+        dayCountR1H--;
 
-        if (dayCountR == 0)
+        if (dayCountR1H == 0)
         {
             for( int i = 0; i < WantedCurrency.size(); i++)
             {
-                double nw = NewData[WantedCurrency[i]][0].coin * LoadedData[WantedCurrency[i]][dayCountR].Close;
+                double nw = NewData[WantedCurrency[i]][0].coin * LoadedData[WantedCurrency[i]][dayCountR1H].Close;
                 cout << "Rebalanc= " << WantedCurrency[i] << "=" << nw << " \t% = " << (nw / NewData[WantedCurrency[i]][0].firstCash - 1) * 100 << "%" <<endl;  
             }
         }
-        
-
-       
-
        //if rebalace
 
     }
@@ -455,7 +544,7 @@ public:
 
             for( int i = 0; i < WantedCurrency.size(); i++)
             {
-                double actualValue = LoadedData[WantedCurrency[i]][dayCountH].Close;
+                double actualValue = LoadedData[WantedCurrency[i]][dayCountH1H].Close;
                 savedForCoin nw;
                 nw.firstCash = onEachCrypto;
                 nw.cash = onEachCrypto;
@@ -466,31 +555,51 @@ public:
             }
         }
 
-        dayCountH -= 1;
-        //cout << dayCountH << endl;
+        dayCountH1H--;
+        //cout << dayCountH1H << endl;
 
-        if(dayCountH == 0)
+        if(dayCountH1H == 0)
         {
             for( int i = 0; i < WantedCurrency.size(); i++)
             {
                 //cout<< "Crypto: " <<onEachCrypto << endl;
-                double nw = NewData[WantedCurrency[i]][1].coin * LoadedData[WantedCurrency[i]][dayCountH].Close;
+                double nw = NewData[WantedCurrency[i]][1].coin * LoadedData[WantedCurrency[i]][dayCountH1H].Close;
                 cout << "HODL= " << WantedCurrency[i] << "=" << nw << "\t % = " << (nw / NewData[WantedCurrency[i]][1].firstCash - 1) * 100 << "%" <<endl;
             }
         }
-        
-
     }
 };
 
-class Prichody : public Event {
+class Hour : public Event {
     void Behavior() {
-        (new Rebalanc)->Activate();
-        (new Hodl)->Activate();
+        (new NewCurs)->Activate();
         Activate( Time + 1);
     }
 };
 
+class Day : public Event {
+    void Behavior() {
+        (new Rebalanc)->Activate();
+        (new Hodl)->Activate();
+        Activate( Time + 24);
+    }
+};
+
+class Week : public Event {
+    void Behavior() {
+
+        Activate( Time + 24 * 7);
+    }
+};
+
+class Month : public Event {
+    void Behavior() {
+
+        Activate( Time + 24 * 7 * 31);
+    }
+};
+
+//todo check jestli den je v dané měně ještě abys nepřesáhl pole;
 int main(int argc, char *argv[]){
     LoadData();
     if (ArgvParse(argc, argv) != 0)
@@ -499,7 +608,8 @@ int main(int argc, char *argv[]){
     SetOutput("crypto.dat");
     Init(0, dayCount);
 
-     (new Prichody)->Activate();
+    (new Hour)->Activate();
+    (new Day)->Activate();
 
     Run();
 
