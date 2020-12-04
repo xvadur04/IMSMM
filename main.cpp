@@ -81,6 +81,11 @@ double dayCountR1M;
 double dayCountH1M;
 double dayCount;
 
+ void seed()
+   {
+       srand(time(0));
+   }
+
 
 std::vector<std::pair<std::string, std::vector<int>>> read_csv(std::string filename){
     // Reads a CSV file into a vector of <string, vector<int>> pairs where
@@ -354,9 +359,10 @@ class NewCurs : public Process {
         for(int i = 0 ; i < WantedCurrency.size(); i++)
         {
             data predict;
-            double rand = Random();
-            double desRand = Random() / 40 ;
-            double lastValueOfCoin = PredictedData[WantedCurrency[i]][PredictedData.size()-1].Close;
+            seed();
+            double rand = fRand(0,1);
+            double desRand = fRand(0,1) / 40;
+            double lastValueOfCoin = PredictedData[WantedCurrency[i]][PredictedData.size()-1].Close; //5.7
             double dispersion = lastValueOfCoin * desRand / 2; // max odhylka 5% z přechoží hodnoty
             double maxP = lastValueOfCoin * (1 + dispersion); 
             double minP = lastValueOfCoin * (1 - dispersion);
