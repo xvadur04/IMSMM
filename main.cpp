@@ -92,6 +92,11 @@ double dayCount;
 double dayCountR;
 double dayCountH;
 
+ void seed()
+   {
+       srand(time(0));
+   }
+
 
 std::vector<std::pair<std::string, std::vector<int>>> read_csv(std::string filename){
     // Reads a CSV file into a vector of <string, vector<int>> pairs where
